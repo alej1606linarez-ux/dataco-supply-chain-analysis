@@ -66,4 +66,34 @@ FROM dataco
 GROUP BY shipping_mode
 ORDER BY avg_profit_with_delay DESC;
 
--- Pregunta 3
+-- Pregunta 3: ¿Qué segmento de cliente es más rentable vs. cuál genera más volumen pero menos margen?
+
+WITH segment_summary AS (
+    SELECT
+        customer_segment,
+        SUM(order_profit_per_order) AS total_profit,
+        AVG(order_profit_per_order) AS avg_profit,
+        COUNT(order_profit_per_order) AS total_orders
+    FROM dataco
+    GROUP BY customer_segment
+),
+
+profit_range AS (
+    SELECT
+        MAX(avg_profit) AS max_avg_profit,
+        MIN(avg_profit) AS min_avg_profit
+    FROM segment_summary
+)
+
+SELECT
+    s.customer_segment,
+    ROUND(s.total_profit, 0) AS total_profit,
+    ROUND(s.avg_profit, 2) AS avg_profit,
+    s.total_orders,
+    
+    -- Porcentaje de diferencia respecto al segmento menos rentable (mínimo)
+    ROUND(((s.avg_profit - p.min_avg_profit) / NULLIF(p.min_avg_profit, 0)) * 100, 2) AS pct_diff_from_min
+
+FROM segment_summary AS s
+CROSS JOIN profit_range AS p
+ORDER BY s.avg_profit DESC;
